@@ -31,7 +31,7 @@ class KiwoomAPI:
         self.ocx.OnReceiveMsg.connect(self._on_receive_msg)
         self.ocx.OnReceiveTrCondition.connect(self._on_receive_tr_condition)
         self.ocx.OnReceiveRealCondition.connect(self._on_receive_real_condition)
-        self.ocx.OnReceiveTrConditionVer.connect(self._on_receive_tr_condition_ver)
+        # self.ocx.OnReceiveTrConditionVer.connect(self._on_receive_tr_condition_ver)
         
         logger.debug("이벤트 핸들러 연결 완료")
     
@@ -179,9 +179,9 @@ class KiwoomAPI:
         """실시간 조건검색 결과 수신 이벤트"""
         logger.debug(f"실시간 조건검색: {code} - {condition_name}")
     
-    def _on_receive_tr_condition_ver(self, ret, msg):
-        """조건검색 목록 요청 이벤트"""
-        logger.debug(f"조건검색 목록: {msg}")
+    # def _on_receive_tr_condition_ver(self, ret, msg):
+    #     """조건검색 목록 요청 이벤트"""
+    #     logger.debug(f"조건검색 목록: {msg}")
     
     def run(self):
         """이벤트 루프 실행"""

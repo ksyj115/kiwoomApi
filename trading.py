@@ -154,6 +154,11 @@ class Trading:
                 return 0
             
             price = self.api.get_master_last_price(code)
+            try:
+                price = float(price.replace(',', ''))  # 혹시 천 단위 콤마가 있을 경우 제거
+            except (ValueError, AttributeError):
+                price = 0
+            
             if price > 0:
                 logger.debug(f"{code} 현재가: {price:,}원")
                 return price
