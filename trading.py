@@ -9,7 +9,9 @@ class Trading:
     def __init__(self, kiwoom_api):
         self.api = kiwoom_api
         self.order_event_loop = QEventLoop()
+        self.tr_event_loop = QEventLoop()
         self.order_result = {}
+        self.tr_data = {}
         
         # 이벤트 핸들러 연결
         self._connect_trading_events()
@@ -20,6 +22,7 @@ class Trading:
         """거래 관련 이벤트 핸들러 연결"""
         self.api.ocx.OnReceiveChejanData.connect(self._on_receive_chejan_data)
         self.api.ocx.OnReceiveMsg.connect(self._on_receive_msg)
+        self.api.ocx.OnReceiveTrData.connect(self._on_receive_tr_data)
         
         logger.debug("거래 이벤트 핸들러 연결 완료")
     
@@ -197,12 +200,15 @@ class Trading:
                 return {}
             
             account_info = {
-                "계좌번호": self.api.get_login_info("ACCOUNT_CNT"),
+                "보유계좌개수": self.api.get_login_info("ACCOUNT_CNT"),
                 "사용자ID": self.api.get_login_info("USER_ID"),
                 "사용자명": self.api.get_login_info("USER_NAME"),
-                "서버구분": self.api.get_login_info("SERVER_GUBUN"),
+                #"서버구분": self.api.get_login_info("SERVER_GUBUN"),
+                "서버구분": self.api.get_login_info("GetServerGubun"),
                 "키움서버": self.api.get_login_info("KEY_BSECGB"),
-                "방화벽": self.api.get_login_info("FIREW_SECGB")
+                "방화벽": self.api.get_login_info("FIREW_SECGB"),
+                "보유계좌목록": self.api.get_login_info("ACCLIST"),
+                "계좌번호": self.api.get_login_info("ACCNO")
             }
             
             logger.info("계좌 정보 조회 완료")
@@ -211,6 +217,66 @@ class Trading:
         except Exception as e:
             logger.log_error("GET_ACCOUNT_INFO", str(e))
             return {}
+
+    def get_total_investment(self):
+        """총 투자 금액 조회"""
+        try:
+            if not self.api.connected:
+                logger.error("API가 연결되지 않았습니다.")
+                return 0
+
+            self.tr_data.pop('opw00018', None)
+            self.api.ocx.SetInputValue("계좌번호", {Config.ACCNO})
+            self.api.ocx.SetInputValue("비밀번호", {Config.ACCNO_PASSWORD})
+            self.api.ocx.SetInputValue("비밀번호입력매체구분", "00")
+            self.api.ocx.SetInputValue("조회구분", "2")
+            self.api.ocx.CommRqData("opw00018_req", "opw00018", 0, "2000")
+            self.tr_event_loop.exec_()
+            return self.tr_data.get('opw00018', {}).get('total_investment', 0)
+
+        except Exception as e:
+            logger.log_error("GET_TOTAL_INVESTMENT", str(e))
+            return 0
+
+    def get_available_funds(self):
+        """주문 가능 금액 조회"""
+        try:
+            if not self.api.connected:
+                logger.error("API가 연결되지 않았습니다.")
+                return 0
+
+            self.tr_data.pop('opw00001', None)
+            self.api.ocx.SetInputValue("계좌번호", {Config.ACCNO})
+            self.api.ocx.SetInputValue("비밀번호", {Config.ACCNO_PASSWORD})
+            self.api.ocx.SetInputValue("비밀번호입력매체구분", "00")
+            self.api.ocx.SetInputValue("조회구분", "2")
+            self.api.ocx.CommRqData("opw00001_req", "opw00001", 0, "2001")
+            self.tr_event_loop.exec_()
+            return self.tr_data.get('opw00001', {}).get('available_funds', 0)
+
+        except Exception as e:
+            logger.log_error("GET_AVAILABLE_FUNDS", str(e))
+            return 0
+
+    def get_holdings(self):
+        """보유 종목 조회"""
+        try:
+            if not self.api.connected:
+                logger.error("API가 연결되지 않았습니다.")
+                return []
+
+            self.tr_data.pop('opw00018', None)
+            self.api.ocx.SetInputValue("계좌번호", {Config.ACCNO})
+            self.api.ocx.SetInputValue("비밀번호", {Config.ACCNO_PASSWORD})
+            self.api.ocx.SetInputValue("비밀번호입력매체구분", "00")
+            self.api.ocx.SetInputValue("조회구분", "2")
+            self.api.ocx.CommRqData("opw00018_req", "opw00018", 0, "2002")
+            self.tr_event_loop.exec_()
+            return self.tr_data.get('opw00018', {}).get('holdings', [])
+
+        except Exception as e:
+            logger.log_error("GET_HOLDINGS", str(e))
+            return []
     
     def _on_receive_chejan_data(self, gubun, item_cnt, fid_list):
         """체결잔고 데이터 수신"""
@@ -241,3 +307,59 @@ class Trading:
             
         except Exception as e:
             logger.log_error("RECEIVE_MSG", str(e)) 
+
+    def _on_receive_tr_data(self, screen_no, rqname, trcode, recordname, prev_next, data_len, error_code, message, splm_msg):
+        """TR 데이터 수신"""
+        try:
+            if rqname == "opw00018_req":
+                total = self.api.ocx.GetCommData(trcode, rqname, 0, "총매입금액")
+                try:
+                    total = int(total.strip().replace(',', ''))
+                except (ValueError, AttributeError):
+                    total = 0
+
+                holdings = []
+                count = int(self.api.ocx.GetRepeatCnt(trcode, rqname))
+                for i in range(count):
+                    code = self.api.ocx.GetCommData(trcode, rqname, i, "종목번호").strip()
+                    name = self.api.ocx.GetCommData(trcode, rqname, i, "종목명").strip()
+                    qty = self.api.ocx.GetCommData(trcode, rqname, i, "보유수량").strip()
+                    avg = self.api.ocx.GetCommData(trcode, rqname, i, "평균단가").strip()
+                    cur = self.api.ocx.GetCommData(trcode, rqname, i, "현재가").strip()
+                    try:
+                        qty = int(qty.replace(',', ''))
+                    except ValueError:
+                        qty = 0
+                    try:
+                        avg = int(avg.replace(',', ''))
+                    except ValueError:
+                        avg = 0
+                    try:
+                        cur = int(cur.replace(',', ''))
+                    except ValueError:
+                        cur = 0
+                    holdings.append({
+                        "code": code,
+                        "name": name,
+                        "quantity": qty,
+                        "avg_price": avg,
+                        "current_price": cur,
+                    })
+
+                self.tr_data['opw00018'] = {
+                    'total_investment': total,
+                    'holdings': holdings
+                }
+
+            elif rqname == "opw00001_req":
+                available = self.api.ocx.GetCommData(trcode, rqname, 0, "주문가능금액")
+                try:
+                    available = int(available.strip().replace(',', ''))
+                except (ValueError, AttributeError):
+                    available = 0
+                self.tr_data['opw00001'] = {'available_funds': available}
+
+        except Exception as e:
+            logger.log_error("RECEIVE_TR_DATA", str(e))
+        finally:
+            self.tr_event_loop.exit()

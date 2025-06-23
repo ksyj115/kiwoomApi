@@ -57,6 +57,18 @@ class KiwoomTradingApp:
                     for key, value in account_info.items():
                         logger.info(f"{key}: {value}")
                 
+                total = self.trading.get_total_investment()
+                available = self.trading.get_available_funds()
+                holdings = self.trading.get_holdings()
+                logger.info(f"총 투자금액: {total:,}원")
+                logger.info(f"주문 가능 금액: {available:,}원")
+                if holdings:
+                    logger.info("=== 보유 종목 ===")
+                    for h in holdings:
+                        logger.info(f"{h['code']} {h['name']} {h['quantity']}주 {h['avg_price']:,}원 {h['current_price']:,}원")
+                else:
+                    logger.info("보유 종목이 없습니다.")  
+
                 return True
             else:
                 logger.error("키움증권 서버 연결 실패")

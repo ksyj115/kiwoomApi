@@ -12,6 +12,10 @@ class Config:
     USER_PASSWORD = os.getenv('KIWOOM_USER_PASSWORD', '')
     CERT_PASSWORD = os.getenv('KIWOOM_CERT_PASSWORD', '')
     
+    # 계좌 정보
+    ACCNO = os.getenv('ACCNO', '')
+    ACCNO_PASSWORD = os.getenv('ACCNO_PASSWORD', '')
+
     # 거래 설정
     TRADE_MODE = os.getenv('TRADE_MODE', 'SIMULATION')  # REAL 또는 SIMULATION
     MAX_POSITION_SIZE = int(os.getenv('MAX_POSITION_SIZE', 1000000))
