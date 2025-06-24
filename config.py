@@ -13,8 +13,8 @@ class Config:
     CERT_PASSWORD = os.getenv('KIWOOM_CERT_PASSWORD', '')
     
     # 계좌 정보
-    ACCNO = os.getenv('ACCNO', '')
-    ACCNO_PASSWORD = os.getenv('ACCNO_PASSWORD', '')
+    ACCNO = os.getenv('ACCNO', '8105608311')
+    ACCNO_PASSWORD = os.getenv('ACCNO_PASSWORD', '0000')
 
     # 거래 설정
     TRADE_MODE = os.getenv('TRADE_MODE', 'SIMULATION')  # REAL 또는 SIMULATION

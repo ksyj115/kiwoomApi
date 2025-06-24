@@ -16,15 +16,16 @@ class Trading:
         # 이벤트 핸들러 연결
         self._connect_trading_events()
         
-        logger.info("거래 기능 초기화 완료")
+        # logger.info("거래 기능 초기화 완료")
     
     def _connect_trading_events(self):
         """거래 관련 이벤트 핸들러 연결"""
         self.api.ocx.OnReceiveChejanData.connect(self._on_receive_chejan_data)
         self.api.ocx.OnReceiveMsg.connect(self._on_receive_msg)
         self.api.ocx.OnReceiveTrData.connect(self._on_receive_tr_data)
+        self.api.ocx.OnReceiveTrData.connect(self._on_order_result)
         
-        logger.debug("거래 이벤트 핸들러 연결 완료")
+        # logger.info("거래 이벤트 핸들러 연결 완료")
     
     def buy_stock(self, code, quantity, price=0, order_type="시장가"):
         """주식 매수 주문"""
@@ -35,11 +36,10 @@ class Trading:
             
             if Config.is_simulation_mode():
                 logger.info(f"시뮬레이션 모드: {code} 매수 {quantity}주")
-                return True
             
             # 주문 타입 설정
             if order_type == "시장가":
-                order_type_code = "1"
+                order_type_code = "03"
             elif order_type == "지정가":
                 order_type_code = "00"
             else:
@@ -47,10 +47,11 @@ class Trading:
                 return False
             
             # 주문 실행
+            self.order_result = {}
             result = self.api.ocx.SendOrder(
                 "매수주문",
                 "0101",  # 화면번호
-                self.api.get_login_info("ACCOUNT_CNT"),  # 계좌번호
+                Config.ACCNO,  # 계좌번호 : 8105608311
                 1,  # 주문타입 (1:신규매수)
                 code,  # 종목코드
                 quantity,  # 주문수량
@@ -60,8 +61,14 @@ class Trading:
             )
             
             if result == 0:
-                logger.log_trade("매수", code, quantity, price, quantity * price)
-                return True
+                logger.info("매수 주문 전송 성공, 결과 대기 중...")
+                self.order_event_loop.exec_()
+                if self.order_result.get("order_no"):
+                    logger.log_trade("매수", code, quantity, price, quantity * price)
+                    return True
+                else:
+                    logger.error("매수 주문이 거부되었습니다.")
+                    return False
             else:
                 logger.log_error("BUY_ORDER", f"매수 주문 실패 (에러코드: {result})")
                 return False
@@ -79,11 +86,11 @@ class Trading:
             
             if Config.is_simulation_mode():
                 logger.info(f"시뮬레이션 모드: {code} 매도 {quantity}주")
-                return True
+                # return True
             
             # 주문 타입 설정
             if order_type == "시장가":
-                order_type_code = "1"
+                order_type_code = "03"
             elif order_type == "지정가":
                 order_type_code = "00"
             else:
@@ -91,10 +98,11 @@ class Trading:
                 return False
             
             # 주문 실행
+            self.order_result = {}
             result = self.api.ocx.SendOrder(
                 "매도주문",
                 "0102",  # 화면번호
-                self.api.get_login_info("ACCOUNT_CNT"),  # 계좌번호
+                Config.ACCNO,  # 계좌번호 : 8105608311
                 2,  # 주문타입 (2:신규매도)
                 code,  # 종목코드
                 quantity,  # 주문수량
@@ -104,8 +112,14 @@ class Trading:
             )
             
             if result == 0:
-                logger.log_trade("매도", code, quantity, price, quantity * price)
-                return True
+                logger.info("매도 주문 전송 성공, 결과 대기 중...")
+                self.order_event_loop.exec_()
+                if self.order_result.get("order_no"):
+                    logger.log_trade("매도", code, quantity, price, quantity * price)
+                    return True
+                else:
+                    logger.error("매도 주문이 거부되었습니다.")
+                    return False
             else:
                 logger.log_error("SELL_ORDER", f"매도 주문 실패 (에러코드: {result})")
                 return False
@@ -123,13 +137,14 @@ class Trading:
             
             if Config.is_simulation_mode():
                 logger.info(f"시뮬레이션 모드: 주문 취소 {order_no}")
-                return True
+                # return True
             
             # 주문 취소
+            self.order_result = {}
             result = self.api.ocx.SendOrder(
                 "주문취소",
                 "0103",  # 화면번호
-                self.api.get_login_info("ACCOUNT_CNT"),  # 계좌번호
+                Config.ACCNO,  # 계좌번호 : 8105608311
                 3,  # 주문타입 (3:취소주문)
                 code,  # 종목코드
                 quantity,  # 주문수량
@@ -139,8 +154,14 @@ class Trading:
             )
             
             if result == 0:
-                logger.info(f"주문 취소 요청: {order_no}")
-                return True
+                logger.info(f"주문 취소 요청 전송: {order_no}, 결과 대기 중...")
+                self.order_event_loop.exec_()
+                if self.order_result.get("order_no"):
+                    logger.info(f"주문 취소 접수: {self.order_result['order_no']}")
+                    return True
+                else:
+                    logger.error("주문 취소가 거부되었습니다.")
+                    return False
             else:
                 logger.log_error("CANCEL_ORDER", f"주문 취소 실패 (에러코드: {result})")
                 return False
@@ -200,18 +221,18 @@ class Trading:
                 return {}
             
             account_info = {
-                "보유계좌개수": self.api.get_login_info("ACCOUNT_CNT"),
+                # "보유계좌개수": self.api.get_login_info("ACCOUNT_CNT"),
                 "사용자ID": self.api.get_login_info("USER_ID"),
                 "사용자명": self.api.get_login_info("USER_NAME"),
-                #"서버구분": self.api.get_login_info("SERVER_GUBUN"),
-                "서버구분": self.api.get_login_info("GetServerGubun"),
-                "키움서버": self.api.get_login_info("KEY_BSECGB"),
-                "방화벽": self.api.get_login_info("FIREW_SECGB"),
-                "보유계좌목록": self.api.get_login_info("ACCLIST"),
-                "계좌번호": self.api.get_login_info("ACCNO")
+                "서버구분": self.api.get_login_info("GetServerGubun") + " (1 : 모의투자, 나머지 : 실서버)",  # 접속서버 구분을 반환합니다.(1 : 모의투자, 나머지 : 실서버)
+                # "키움서버 키보드보안 해지여부": self.api.get_login_info("KEY_BSECGB") + "(0: 정상, 1: 해지)",  # 키보드보안 해지여부를 반환합니다. (0: 정상, 1: 해지)
+                # "방화벽": self.api.get_login_info("FIREW_SECGB"),
+                # "보유계좌목록": self.api.get_login_info("ACCLIST"),
+                # "계좌번호": self.api.get_login_info("ACCNO")
+                "계좌번호": Config.ACCNO
             }
             
-            logger.info("계좌 정보 조회 완료")
+            # logger.info("계좌 정보 조회 완료")
             return account_info
             
         except Exception as e:
@@ -226,8 +247,8 @@ class Trading:
                 return 0
 
             self.tr_data.pop('opw00018', None)
-            self.api.ocx.SetInputValue("계좌번호", {Config.ACCNO})
-            self.api.ocx.SetInputValue("비밀번호", {Config.ACCNO_PASSWORD})
+            self.api.ocx.SetInputValue("계좌번호", Config.ACCNO)
+            self.api.ocx.SetInputValue("비밀번호", Config.ACCNO_PASSWORD)
             self.api.ocx.SetInputValue("비밀번호입력매체구분", "00")
             self.api.ocx.SetInputValue("조회구분", "2")
             self.api.ocx.CommRqData("opw00018_req", "opw00018", 0, "2000")
@@ -246,8 +267,8 @@ class Trading:
                 return 0
 
             self.tr_data.pop('opw00001', None)
-            self.api.ocx.SetInputValue("계좌번호", {Config.ACCNO})
-            self.api.ocx.SetInputValue("비밀번호", {Config.ACCNO_PASSWORD})
+            self.api.ocx.SetInputValue("계좌번호", Config.ACCNO)
+            self.api.ocx.SetInputValue("비밀번호", Config.ACCNO_PASSWORD)
             self.api.ocx.SetInputValue("비밀번호입력매체구분", "00")
             self.api.ocx.SetInputValue("조회구분", "2")
             self.api.ocx.CommRqData("opw00001_req", "opw00001", 0, "2001")
@@ -266,10 +287,10 @@ class Trading:
                 return []
 
             self.tr_data.pop('opw00018', None)
-            self.api.ocx.SetInputValue("계좌번호", {Config.ACCNO})
-            self.api.ocx.SetInputValue("비밀번호", {Config.ACCNO_PASSWORD})
+            self.api.ocx.SetInputValue("계좌번호", Config.ACCNO)
+            self.api.ocx.SetInputValue("비밀번호", Config.ACCNO_PASSWORD)
             self.api.ocx.SetInputValue("비밀번호입력매체구분", "00")
-            self.api.ocx.SetInputValue("조회구분", "2")
+            self.api.ocx.SetInputValue("조회구분", "2")     # 조회구분 = 1:합산, 2:개별
             self.api.ocx.CommRqData("opw00018_req", "opw00018", 0, "2002")
             self.tr_event_loop.exec_()
             return self.tr_data.get('opw00018', {}).get('holdings', [])
@@ -296,7 +317,7 @@ class Trading:
     def _on_receive_msg(self, screen_no, rqname, trcode, msg):
         """메시지 수신"""
         try:
-            logger.info(f"거래 메시지: {msg}")
+            logger.debug(f"거래 메시지: {msg}")
             
             # 주문 관련 메시지 처리
             if "주문" in msg:
@@ -324,8 +345,11 @@ class Trading:
                     code = self.api.ocx.GetCommData(trcode, rqname, i, "종목번호").strip()
                     name = self.api.ocx.GetCommData(trcode, rqname, i, "종목명").strip()
                     qty = self.api.ocx.GetCommData(trcode, rqname, i, "보유수량").strip()
-                    avg = self.api.ocx.GetCommData(trcode, rqname, i, "평균단가").strip()
+                    avg = self.api.ocx.GetCommData(trcode, rqname, i, "매입가").strip()
                     cur = self.api.ocx.GetCommData(trcode, rqname, i, "현재가").strip()
+
+                    logger.info(f"avg : {avg}")
+
                     try:
                         qty = int(qty.replace(',', ''))
                     except ValueError:
@@ -363,3 +387,40 @@ class Trading:
             logger.log_error("RECEIVE_TR_DATA", str(e))
         finally:
             self.tr_event_loop.exit()
+
+    def _on_order_result(self, screen_no, rqname, trcode, recordname, prev_next, data_len, error_code, message, splm_msg):
+        """주문 처리 결과 수신"""
+        try:
+            if rqname not in ("매수주문", "매도주문", "주문취소"):
+                return
+
+            order_no = self.api.ocx.GetCommData(trcode, rqname, 0, "주문번호").strip()
+            state = self.api.ocx.GetCommData(trcode, rqname, 0, "주문상태").strip()
+            qty = self.api.ocx.GetCommData(trcode, rqname, 0, "주문수량").strip()
+            price = self.api.ocx.GetCommData(trcode, rqname, 0, "주문가격").strip()
+
+            try:
+                qty = int(qty.replace(',', ''))
+            except (ValueError, AttributeError):
+                qty = 0
+            try:
+                price = int(price.replace(',', ''))
+            except (ValueError, AttributeError):
+                price = 0
+
+            self.order_result = {
+                'order_no': order_no,
+                'state': state,
+                'quantity': qty,
+                'price': price
+            }
+
+            if order_no:
+                logger.info(f"주문 접수 성공: {order_no} ({state})")
+            else:
+                logger.error(f"주문 접수 실패: {message}")
+
+        except Exception as e:
+            logger.log_error("ORDER_RESULT", str(e))
+        finally:
+            self.order_event_loop.exit()

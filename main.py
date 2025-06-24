@@ -22,12 +22,12 @@ class KiwoomTradingApp:
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
         
-        logger.info("키움증권 자동매매 프로그램 시작")
+        # logger.info("키움증권 자동매매 프로그램 시작")
     
     def initialize(self):
         """초기화"""
         try:
-            logger.info("시스템 초기화 중...")
+            # logger.info("시스템 초기화 중...")
             
             # 키움증권 API 초기화
             self.api = KiwoomAPI()
@@ -35,7 +35,7 @@ class KiwoomTradingApp:
             # 거래 기능 초기화
             self.trading = Trading(self.api)
             
-            logger.info("시스템 초기화 완료")
+            # logger.info("시스템 초기화 완료")
             return True
             
         except Exception as e:
@@ -45,30 +45,38 @@ class KiwoomTradingApp:
     def connect(self):
         """키움증권 서버 연결"""
         try:
-            logger.info("키움증권 서버 연결 시도...")
+            # logger.info("키움증권 서버 연결 시도...")
             
             if self.api.connect():
-                logger.info("키움증권 서버 연결 성공")
+                # logger.info("키움증권 서버 연결 성공")
                 
                 # 계좌 정보 출력
                 account_info = self.trading.get_account_info()
                 if account_info:
-                    logger.info("=== 계좌 정보 ===")
+                    logger.info("==================== 계좌 정보 ====================")
                     for key, value in account_info.items():
                         logger.info(f"{key}: {value}")
+
+                    
                 
                 total = self.trading.get_total_investment()
                 available = self.trading.get_available_funds()
                 holdings = self.trading.get_holdings()
+
+                logger.info("")
                 logger.info(f"총 투자금액: {total:,}원")
                 logger.info(f"주문 가능 금액: {available:,}원")
-                if holdings:
-                    logger.info("=== 보유 종목 ===")
-                    for h in holdings:
-                        logger.info(f"{h['code']} {h['name']} {h['quantity']}주 {h['avg_price']:,}원 {h['current_price']:,}원")
-                else:
-                    logger.info("보유 종목이 없습니다.")  
+                logger.info("===================================================")
 
+                if holdings:
+                    logger.info("*************** 보유 종목 ***************")
+                    for h in holdings:
+                        logger.info(f"[종목코드 : {h['code']}] {h['name']} [보유수량 : {h['quantity']}주] [매입단가 : {h['avg_price']:,}원] [현재가 : {h['current_price']:,}원]")
+                    logger.info("****************************************")
+                else:
+                    logger.info("*************** 보유 종목 ***************")
+                    logger.info("보유 종목이 없습니다.")  
+                    logger.info("****************************************")
                 return True
             else:
                 logger.error("키움증권 서버 연결 실패")
@@ -81,39 +89,39 @@ class KiwoomTradingApp:
     def test_basic_functions(self):
         """기본 기능 테스트"""
         try:
-            logger.info("기본 기능 테스트 시작...")
+            logger.debug("기본 기능 테스트 시작...")
             
             # 연결 상태 확인
             connect_state = self.api.get_connect_state()
-            logger.info(f"연결 상태: {connect_state}")
+            logger.debug(f"연결 상태: {connect_state}")
             
             # 삼성전자 종목 정보 조회 테스트
-            samsung_code = "005930"
-            samsung_name = self.trading.get_stock_name(samsung_code)
-            samsung_price = self.trading.get_stock_price(samsung_code)
+            # samsung_code = "005930"
+            # samsung_name = self.trading.get_stock_name(samsung_code)
+            # samsung_price = self.trading.get_stock_price(samsung_code)
             
-            if samsung_name and samsung_price > 0:
-                logger.info(f"테스트 종목: {samsung_name}({samsung_code}) - {samsung_price:,}원")
-            else:
-                logger.warning("종목 정보 조회 실패")
+            # if samsung_name and samsung_price > 0:
+            #     logger.info(f"테스트 종목: {samsung_name}({samsung_code}) - {samsung_price:,}원")
+            # else:
+            #     logger.warning("종목 정보 조회 실패")
             
             # 시뮬레이션 모드에서 매수/매도 테스트
-            if Config.is_simulation_mode():
-                logger.info("시뮬레이션 모드에서 거래 테스트...")
+            # if Config.is_simulation_mode():
+            #     logger.info("시뮬레이션 모드에서 거래 테스트...")
                 
-                # 매수 테스트
-                if self.trading.buy_stock(samsung_code, 1):
-                    logger.info("매수 테스트 성공")
-                else:
-                    logger.error("매수 테스트 실패")
+            #     # 매수 테스트
+            #     if self.trading.buy_stock(samsung_code, 1):
+            #         logger.info("매수 테스트 성공")
+            #     else:
+            #         logger.error("매수 테스트 실패")
                 
-                # 매도 테스트
-                if self.trading.sell_stock(samsung_code, 1):
-                    logger.info("매도 테스트 성공")
-                else:
-                    logger.error("매도 테스트 실패")
+            #     # 매도 테스트
+            #     if self.trading.sell_stock(samsung_code, 1):
+            #        logger.info("매도 테스트 성공")
+            #     else:
+            #        logger.error("매도 테스트 실패")
             
-            logger.info("기본 기능 테스트 완료")
+            # logger.info("기본 기능 테스트 완료")
             return True
             
         except Exception as e:
@@ -123,7 +131,7 @@ class KiwoomTradingApp:
     def run(self):
         """메인 실행 루프"""
         try:
-            logger.info("프로그램 실행 시작")
+            # logger.info("프로그램 실행 시작")
             self.running = True
             
             # 초기화
@@ -141,8 +149,8 @@ class KiwoomTradingApp:
                 logger.error("기본 기능 테스트 실패")
                 return False
             
-            logger.info("모든 기본 기능이 정상적으로 작동합니다!")
-            logger.info("프로그램을 종료하려면 Ctrl+C를 누르세요.")
+            # logger.info("모든 기본 기능이 정상적으로 작동합니다!")
+            # logger.info("프로그램을 종료하려면 Ctrl+C를 누르세요.")
             
             # 이벤트 루프 실행
             self.api.run()
@@ -178,12 +186,15 @@ def main():
     """메인 함수"""
     try:
         # 설정 정보 출력
-        logger.info("=== 키움증권 자동매매 프로그램 ===")
+        logger.info("============= 키움증권 자동매매 프로그램 =============")
         logger.info(f"거래 모드: {Config.TRADE_MODE}")
-        logger.info(f"최대 포지션 크기: {Config.MAX_POSITION_SIZE:,}원")
-        logger.info(f"손절 비율: {Config.STOP_LOSS_RATE*100}%")
-        logger.info(f"익절 비율: {Config.TAKE_PROFIT_RATE*100}%")
-        logger.info("=" * 40)
+        # logger.info(f"최대 포지션 크기: {Config.MAX_POSITION_SIZE:,}원")
+        # logger.info(f"손절 비율: {Config.STOP_LOSS_RATE*100}%")
+        # logger.info(f"익절 비율: {Config.TAKE_PROFIT_RATE*100}%")
+        logger.info("======================================================")
+        logger.info("")
+        logger.info("")
+        logger.info("")
         
         # 애플리케이션 실행
         app = KiwoomTradingApp()

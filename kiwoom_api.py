@@ -20,7 +20,7 @@ class KiwoomAPI:
         # 이벤트 핸들러 연결
         self._connect_event_handlers()
         
-        logger.info("키움증권 API 초기화 완료")
+        # logger.info("키움증권 API 초기화 완료")
     
     def _connect_event_handlers(self):
         """이벤트 핸들러 연결"""
@@ -31,20 +31,19 @@ class KiwoomAPI:
         self.ocx.OnReceiveMsg.connect(self._on_receive_msg)
         self.ocx.OnReceiveTrCondition.connect(self._on_receive_tr_condition)
         self.ocx.OnReceiveRealCondition.connect(self._on_receive_real_condition)
-        # self.ocx.OnReceiveTrConditionVer.connect(self._on_receive_tr_condition_ver)
         
-        logger.debug("이벤트 핸들러 연결 완료")
+        # logger.debug("이벤트 핸들러 연결 완료")
     
     def connect(self):
         """키움증권 서버에 연결"""
         try:
-            logger.info("키움증권 서버 연결 시도...")
+            # logger.info("키움증권 서버 연결 시도...")
             result = self.ocx.CommConnect()
             
             if result == 0:
                 self.login_event_loop.exec_()
                 if self.connected:
-                    logger.log_connection("SUCCESS", "키움증권 서버 연결 성공")
+                    # logger.log_connection("SUCCESS", "키움증권 서버 연결 성공")
                     return True
                 else:
                     logger.log_connection("FAILED", "로그인 실패")
@@ -135,14 +134,6 @@ class KiwoomAPI:
             logger.log_error("GET_CODE_LIST_BY_MARKET", str(e))
             return ""
     
-    def get_connect_state(self):
-        """연결 상태 확인"""
-        try:
-            return self.ocx.GetConnectState()
-        except Exception as e:
-            logger.log_error("GET_CONNECT_STATE", str(e))
-            return 0
-    
     # 이벤트 핸들러 메서드들
     def _on_event_connect(self, err_code):
         """로그인 이벤트"""
@@ -169,7 +160,7 @@ class KiwoomAPI:
     
     def _on_receive_msg(self, screen_no, rqname, trcode, msg):
         """메시지 수신 이벤트"""
-        logger.info(f"메시지 수신: {msg}")
+        logger.debug(f"메시지 수신: {msg}")
     
     def _on_receive_tr_condition(self, screen_no, codes, condition_name, condition_index, next):
         """조건검색 결과 수신 이벤트"""
@@ -178,10 +169,6 @@ class KiwoomAPI:
     def _on_receive_real_condition(self, code, type, condition_name, condition_index):
         """실시간 조건검색 결과 수신 이벤트"""
         logger.debug(f"실시간 조건검색: {code} - {condition_name}")
-    
-    # def _on_receive_tr_condition_ver(self, ret, msg):
-    #     """조건검색 목록 요청 이벤트"""
-    #     logger.debug(f"조건검색 목록: {msg}")
     
     def run(self):
         """이벤트 루프 실행"""
