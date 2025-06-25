@@ -67,16 +67,29 @@ class KiwoomTradingApp:
                 logger.info(f"총 투자금액: {total:,}원")
                 logger.info(f"주문 가능 금액: {available:,}원")
                 logger.info("===================================================")
+                logger.info("")
+                logger.info("")
+                logger.info("")
 
                 if holdings:
-                    logger.info("*************** 보유 종목 ***************")
+                    logger.info("************************************** 보유 종목 **************************************")
                     for h in holdings:
-                        logger.info(f"[종목코드 : {h['code']}] {h['name']} [보유수량 : {h['quantity']}주] [매입단가 : {h['avg_price']:,}원] [현재가 : {h['current_price']:,}원]")
-                    logger.info("****************************************")
+                        logger.info(f"{h['name']} (종목코드 : {h['code']}) [ 현재가 : {h['current_price']:,}원 ]")
+                        logger.info(f"[ 내평균 : {h['purchase_price']:,}원 ] [ 보유수량 : {h['quantity']}주 ]")
+                        logger.info(f"평가금 : {((h['purchase_price'] * h['quantity']) + ((h['current_price'] - h['purchase_price']) * h['quantity'])):,}원")
+                        logger.info(f"손익상태 : {((h['current_price'] - h['purchase_price']) * h['quantity']):,}원 ({round((((h['current_price'] - h['purchase_price']) * h['quantity']) / (h['purchase_price'] * h['quantity']))*100, 2)}%)")
+                        logger.info("")
+                    logger.info("***************************************************************************************")
+                    logger.info("")
+                    logger.info("")
+                    logger.info("")
                 else:
-                    logger.info("*************** 보유 종목 ***************")
+                    logger.info("************************************** 보유 종목 **************************************")
                     logger.info("보유 종목이 없습니다.")  
-                    logger.info("****************************************")
+                    logger.info("***************************************************************************************")
+                    logger.info("")
+                    logger.info("")
+                    logger.info("")
                 return True
             else:
                 logger.error("키움증권 서버 연결 실패")
@@ -128,10 +141,52 @@ class KiwoomTradingApp:
             logger.log_error("TEST_FUNCTIONS", str(e))
             return False
     
+    def test_get_top_stocks_functions(self):
+        """거래량 상위 종목 조회 기능 테스트"""
+        try:
+            stocks = self.trading.get_stocks()
+            if stocks:
+                logger.info("************************************** 거래량 상위 종목 **************************************")
+                for s in stocks:
+                    logger.info(f"({s['code']}) {s['name']} | 거래량: {s['vol']:,}주 | 거래금액: {int((round(s['amount'], -2))/100):,}억원 | 현재가: {abs(s['price']):,}원")
+                logger.info("*********************************************************************************************")
+                logger.info("")
+                logger.info("")
+                logger.info("")
+            else:
+                logger.info("거래량 상위 종목이 없습니다.")
+            return True
+
+        except Exception as e:
+            logger.log_error("TEST_GET_STOCKS", str(e))
+            return False
+
+    def test_get_upsurge_stocks_functions(self):
+        """거래량 급증 상위 종목 조회 기능 테스트"""
+        try:
+            upsurge_stocks = self.trading.get_upsurge_stocks()
+            if upsurge_stocks:
+                logger.info("************************************** 거래량 급증 상위 종목 **************************************")
+                for u in upsurge_stocks:
+                    logger.info(f"({u['code']}) {u['name']} | 이전거래량: {u['pre_vol']:,}주 | 현재거래량: {u['cur_vol']:,}주 | 등락률: {u['fluctuation_rate']} | 현재가: {abs(u['price']):,}원")
+                logger.info("*************************************************************************************************")
+                logger.info("")
+                logger.info("")
+                logger.info("")
+            else:
+                logger.info("거래량 급증 상위 종목이 없습니다.")
+            return True
+
+        except Exception as e:
+            logger.log_error("TEST_GET_UPSURGE_STOCKS", str(e))
+            return False
+            
+            
+            
+
     def run(self):
         """메인 실행 루프"""
         try:
-            # logger.info("프로그램 실행 시작")
             self.running = True
             
             # 초기화
@@ -148,9 +203,16 @@ class KiwoomTradingApp:
             if not self.test_basic_functions():
                 logger.error("기본 기능 테스트 실패")
                 return False
-            
-            # logger.info("모든 기본 기능이 정상적으로 작동합니다!")
-            # logger.info("프로그램을 종료하려면 Ctrl+C를 누르세요.")
+
+            # 거래량 상위 종목 조회 기능 테스트
+            if not self.test_get_top_stocks_functions():
+                logger.error("거래량 상위 종목 조회 기능 테스트 실패")
+                return False
+
+            # 거래량 급증 상위 종목 조회 기능 테스트
+            if not self.test_get_upsurge_stocks_functions():
+                logger.error("거래량 급증 상위 종목 조회 기능 테스트 실패")
+                return False
             
             # 이벤트 루프 실행
             self.api.run()

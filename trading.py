@@ -298,7 +298,63 @@ class Trading:
         except Exception as e:
             logger.log_error("GET_HOLDINGS", str(e))
             return []
-    
+
+    def get_stocks(self):
+        """거래량 상위 종목 조회"""
+        try:
+            if not self.api.connected:
+                logger.error("API가 연결되지 않았습니다.")
+                return []
+
+            # self.api.ocx.SetInputValue("시장구분", "000")   # (000:전체, 001:코스피, 101:코스닥)
+            # self.api.ocx.SetInputValue("정렬구분"	,  "1");   # (1:거래량, 2:거래회전율, 3:거래대금)
+            # self.api.ocx.SetInputValue("관리종목포함", "0"); # (0:관리종목 포함, 1:관리종목 미포함, 3:우선주제외, 11:정리매매종목제외, 4:관리종목, 우선주제외, 5:증100제외, 6:증100마나보기, 13:증60만보기, 12:증50만보기, 7:증40만보기, 8:증30만보기, 9:증20만보기, 14:ETF제외, 15:스팩제외, 16:ETF+ETN제외)
+            # self.api.ocx.SetInputValue("신용구분", "0"); # (0:전체조회, 9:신용융자전체, 1:신용융자A군, 2:신용융자B군, 3:신용융자C군, 4:신용융자D군, 8:신용대주)
+            # self.api.ocx.SetInputValue("거래량구분", "200"); # (0:전체조회, 5:5천주이상, 10:1만주이상, 50:5만주이상, 100:10만주이상, 200:20만주이상, 300:30만주이상, 500:500만주이상, 1000:백만주이상)
+            # self.api.ocx.SetInputValue("가격구분", "0"); # (0:전체조회, 1:1천원미만, 2:1천원이상, 3:1천원~2천원, 4:2천원~5천원, 5:5천원이상, 6:5천원~1만원, 10:1만원미만, 7:1만원이상, 8:5만원이상, 9:10만원이상)
+            # self.api.ocx.SetInputValue("거래대금구분", "100"); # (0:전체조회, 1:1천만원이상, 3:3천만원이상, 4:5천만원이상, 10:1억원이상, 30:3억원이상, 50:5억원이상, 100:10억원이상, 300:30억원이상, 500:50억원이상, 1000:100억원이상, 3000:300억원이상, 5000:500억원이상)
+            # self.api.ocx.SetInputValue("장운영구분", "0"); # (0:전체조회, 1:장중, 2:장전시간외, 3:장후시간외)
+            # self.api.ocx.SetInputValue("거래소구분", "1"); # (1:KRX, 2:NXT, 3:통합, 공백시 KRX 시세조회)
+
+            self.tr_data.pop("OPT10030", None)
+            self.api.ocx.SetInputValue("시장구분", "000")
+            self.api.ocx.CommRqData("volume_rank_req", "OPT10030", 0, "2003")
+            self.tr_event_loop.exec_()
+            return self.tr_data.get("OPT10030", {}).get("stocks", [])
+
+        except Exception as e:
+            logger.log_error("GET_STOCKS", str(e))
+            return []
+
+    def get_upsurge_stocks(self):
+        """거래량 급증 상위 종목 조회"""
+        try:
+            if not self.api.connected:
+                logger.error("API가 연결되지 않았습니다.")
+                return []
+
+            # TR 요청 횟수 제한(초당 5회)
+            # self.api.ocx.SetInputValue("시장구분", "000")   # (000:전체, 001:코스피, 101:코스닥)
+            # self.api.ocx.SetInputValue("정렬구분"	,  "1");   # (1:급증량, 2:급증률, 3:급감량, 4:급감률)
+            # self.api.ocx.SetInputValue("시간구분", "1"); # (1:분, 2:전일)
+            # self.api.ocx.SetInputValue("거래량구분", "200"); # (5:5천주이상, 10:만주이상, 50:5만주이상, 100:10만주이상, 200:20만주이상, 300:30만주이상, 500:50만주이상, 1000:백만주이상)
+            # self.api.ocx.SetInputValue("시간", "0930"); # 분 입력 (시간구분 분 선택시 입력)   오전 09:30 기준으로 조회하면 전장 대비 급증 종목을 조기에 포착 가능
+            # self.api.ocx.SetInputValue("종목조건", "0"); # (0:전체조회, 1:관리종목제외, 3:우선주제외, 11:정리매매종목제외, 4:관리종목,우선주제외, 5:증100제외, 6:증100만보기, 13:증60만보기, 12:증50만보기, 7:증40만보기, 8:증30만보기, 9:증20만보기, 17:ETN제외, 14:ETF제외, 16:ETF+ETN제외, 15:스팩제외, 20:ETF+ETN+스팩제외)
+            # self.api.ocx.SetInputValue("가격구분", "0"); # (0:전체조회, 2:5만원이상, 5:1만원이상, 6:5천원이상, 8:1천원이상, 9:10만원이상)
+            # self.api.ocx.SetInputValue("거래소구분", "1"); # (1:KRX, 2:NXT, 3:통합, 공백시 KRX 시세조회)
+
+            self.tr_data.pop("OPT10023", None)
+            self.api.ocx.SetInputValue("종목조건", "0")
+            self.api.ocx.SetInputValue("시장구분", "000")
+            self.api.ocx.CommRqData("upsurge_volume_rank_req", "OPT10023", 0, "2004")
+            self.tr_event_loop.exec_()
+            return self.tr_data.get("OPT10023", {}).get("upsurge_stocks", [])
+
+        except Exception as e:
+            logger.log_error("GET_UPSURGE_STOCKS", str(e))
+            return []
+
+
     def _on_receive_chejan_data(self, gubun, item_cnt, fid_list):
         """체결잔고 데이터 수신"""
         try:
@@ -345,28 +401,27 @@ class Trading:
                     code = self.api.ocx.GetCommData(trcode, rqname, i, "종목번호").strip()
                     name = self.api.ocx.GetCommData(trcode, rqname, i, "종목명").strip()
                     qty = self.api.ocx.GetCommData(trcode, rqname, i, "보유수량").strip()
-                    avg = self.api.ocx.GetCommData(trcode, rqname, i, "매입가").strip()
+                    prcs = self.api.ocx.GetCommData(trcode, rqname, i, "매입가").strip()
                     cur = self.api.ocx.GetCommData(trcode, rqname, i, "현재가").strip()
-
-                    logger.info(f"avg : {avg}")
 
                     try:
                         qty = int(qty.replace(',', ''))
                     except ValueError:
                         qty = 0
                     try:
-                        avg = int(avg.replace(',', ''))
+                        prcs = int(prcs.replace(',', ''))
                     except ValueError:
-                        avg = 0
+                        prcs = 0
                     try:
                         cur = int(cur.replace(',', ''))
                     except ValueError:
                         cur = 0
+
                     holdings.append({
                         "code": code,
                         "name": name,
                         "quantity": qty,
-                        "avg_price": avg,
+                        "purchase_price": prcs,
                         "current_price": cur,
                     })
 
@@ -382,6 +437,74 @@ class Trading:
                 except (ValueError, AttributeError):
                     available = 0
                 self.tr_data['opw00001'] = {'available_funds': available}
+
+            elif rqname == "volume_rank_req":
+                stocks = []
+                count = int(self.api.ocx.GetRepeatCnt(trcode, rqname))
+                for i in range(count):
+                    code = self.api.ocx.GetCommData(trcode, rqname, i, "종목코드").strip()
+                    name = self.api.ocx.GetCommData(trcode, rqname, i, "종목명").strip()
+                    volume = self.api.ocx.GetCommData(trcode, rqname, i, "거래량").strip()
+                    amount = self.api.ocx.GetCommData(trcode, rqname, i, "거래금액").strip()
+                    price = self.api.ocx.GetCommData(trcode, rqname, i, "현재가").strip()
+
+                    try:
+                        volume = int(volume.replace(',', ''))
+                    except (ValueError, AttributeError):
+                        volume = 0
+                    try:
+                        amount = int(amount.replace(',', ''))
+                    except (ValueError, AttributeError):
+                        amount = 0
+                    try:
+                        price = int(price.replace(',', ''))
+                    except (ValueError, AttributeError):
+                        price = 0
+
+                    stocks.append({
+                        "code": code,
+                        "name": name,
+                        "price": price,
+                        "vol": volume,
+                        "amount": amount,
+                    })
+
+                self.tr_data["OPT10030"] = {"stocks": stocks[:20]}
+
+            elif rqname == "upsurge_volume_rank_req":
+                upsurge_stocks = []
+                count = int(self.api.ocx.GetRepeatCnt(trcode, rqname))
+                for i in range(count):
+                    code = self.api.ocx.GetCommData(trcode, rqname, i, "종목코드").strip()
+                    name = self.api.ocx.GetCommData(trcode, rqname, i, "종목명").strip()
+                    pre_volume = self.api.ocx.GetCommData(trcode, rqname, i, "이전거래량").strip()
+                    cur_volume = self.api.ocx.GetCommData(trcode, rqname, i, "현재거래량").strip()
+                    fluctuation_rate = self.api.ocx.GetCommData(trcode, rqname, i, "등락률").strip()
+                    price = self.api.ocx.GetCommData(trcode, rqname, i, "현재가").strip()
+
+                    try:
+                        pre_volume = int(pre_volume.replace(',', ''))
+                    except (ValueError, AttributeError):
+                        pre_volume = 0
+                    try:
+                        cur_volume = int(cur_volume.replace(',', ''))
+                    except (ValueError, AttributeError):
+                        cur_volume = 0
+                    try:
+                        price = int(price.replace(',', ''))
+                    except (ValueError, AttributeError):
+                        price = 0
+
+                    upsurge_stocks.append({
+                        "code": code,
+                        "name": name,
+                        "price": price,
+                        "pre_vol": pre_volume,
+                        "cur_vol": cur_volume,
+                        "fluctuation_rate": fluctuation_rate,
+                    })
+
+                self.tr_data["OPT10023"] = {"upsurge_stocks": upsurge_stocks[:20]}
 
         except Exception as e:
             logger.log_error("RECEIVE_TR_DATA", str(e))
